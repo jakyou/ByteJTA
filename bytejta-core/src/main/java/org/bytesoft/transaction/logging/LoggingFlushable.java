@@ -13,17 +13,10 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this distribution; if not, see <http://www.gnu.org/licenses/>.
  */
-package org.bytesoft.transaction.supports.rpc;
+package org.bytesoft.transaction.logging;
 
-import org.bytesoft.bytejta.supports.wire.RemoteCoordinator;
-import org.bytesoft.transaction.TransactionContext;
+public interface LoggingFlushable {
 
-public interface TransactionRequest {
-
-	public RemoteCoordinator getTargetTransactionCoordinator();
-
-	public TransactionContext getTransactionContext();
-
-	public void setTransactionContext(TransactionContext transactionContext);
+	public void flushImmediately();
 
 }

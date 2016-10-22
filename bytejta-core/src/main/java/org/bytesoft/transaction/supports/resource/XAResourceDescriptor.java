@@ -15,7 +15,9 @@
  */
 package org.bytesoft.transaction.supports.resource;
 
+import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
+import javax.transaction.xa.Xid;
 
 public interface XAResourceDescriptor extends XAResource {
 
@@ -24,5 +26,11 @@ public interface XAResourceDescriptor extends XAResource {
 	public String getIdentifier();
 
 	public void setTransactionTimeoutQuietly(int timeout);
+
+	public boolean isTransactionCommitted(Xid xid) throws IllegalStateException;
+
+	public void recoveryCommit(Xid xid) throws XAException;
+
+	public void recoveryRollback(Xid xid) throws XAException;
 
 }

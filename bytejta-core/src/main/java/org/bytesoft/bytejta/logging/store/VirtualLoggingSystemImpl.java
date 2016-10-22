@@ -35,6 +35,7 @@ import org.bytesoft.transaction.logging.store.VirtualLoggingListener;
 import org.bytesoft.transaction.logging.store.VirtualLoggingRecord;
 import org.bytesoft.transaction.logging.store.VirtualLoggingSystem;
 import org.bytesoft.transaction.logging.store.VirtualLoggingTrigger;
+import org.bytesoft.transaction.xa.XidFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,11 +154,11 @@ public abstract class VirtualLoggingSystemImpl implements VirtualLoggingSystem, 
 				break;
 			}
 
-			byte[] keyByteArray = new byte[32];
+			byte[] keyByteArray = new byte[XidFactory.GLOBAL_TRANSACTION_LENGTH];
 			System.arraycopy(byteArray, 0, keyByteArray, 0, keyByteArray.length);
-			int operator = byteArray[32];
-			byte[] valueByteArray = new byte[byteArray.length - 32 - 1 - 4];
-			System.arraycopy(byteArray, 32 + 1 + 4, valueByteArray, 0, valueByteArray.length);
+			int operator = byteArray[keyByteArray.length];
+			byte[] valueByteArray = new byte[byteArray.length - XidFactory.GLOBAL_TRANSACTION_LENGTH - 1 - 4];
+			System.arraycopy(byteArray, XidFactory.GLOBAL_TRANSACTION_LENGTH + 1 + 4, valueByteArray, 0, valueByteArray.length);
 
 			VirtualLoggingKey xid = new VirtualLoggingKey();
 			xid.setGlobalTransactionId(keyByteArray);
@@ -182,7 +183,8 @@ public abstract class VirtualLoggingSystemImpl implements VirtualLoggingSystem, 
 		System.arraycopy(keyByteArray, 0, byteArray, 0, keyByteArray.length);
 		byteArray[keyByteArray.length] = (byte) (OPERATOR_CREATE & 0xFF);
 		System.arraycopy(sizeByteArray, 0, byteArray, keyByteArray.length + 1, sizeByteArray.length);
-		System.arraycopy(textByteArray, 0, byteArray, keyByteArray.length + 1 + sizeByteArray.length, textByteArray.length);
+		System.arraycopy(textByteArray, 0, byteArray, keyByteArray.length + 1 + sizeByteArray.length,
+				textByteArray.length);
 
 		try {
 			this.lock.lock();
@@ -219,7 +221,8 @@ public abstract class VirtualLoggingSystemImpl implements VirtualLoggingSystem, 
 		System.arraycopy(keyByteArray, 0, byteArray, 0, keyByteArray.length);
 		byteArray[keyByteArray.length] = (byte) (OPERATOR_MOFIFY & 0xFF);
 		System.arraycopy(sizeByteArray, 0, byteArray, keyByteArray.length + 1, sizeByteArray.length);
-		System.arraycopy(textByteArray, 0, byteArray, keyByteArray.length + 1 + sizeByteArray.length, textByteArray.length);
+		System.arraycopy(textByteArray, 0, byteArray, keyByteArray.length + 1 + sizeByteArray.length,
+				textByteArray.length);
 
 		try {
 			this.lock.lock();
@@ -250,9 +253,9 @@ public abstract class VirtualLoggingSystemImpl implements VirtualLoggingSystem, 
 				break;
 			}
 
-			byte[] keyByteArray = new byte[32];
+			byte[] keyByteArray = new byte[XidFactory.GLOBAL_TRANSACTION_LENGTH];
 			System.arraycopy(byteArray, 0, keyByteArray, 0, keyByteArray.length);
-			int operator = byteArray[32];
+			int operator = byteArray[keyByteArray.length];
 
 			VirtualLoggingKey xid = new VirtualLoggingKey();
 			xid.setGlobalTransactionId(keyByteArray);
@@ -286,9 +289,9 @@ public abstract class VirtualLoggingSystemImpl implements VirtualLoggingSystem, 
 				break;
 			}
 
-			byte[] keyByteArray = new byte[32];
+			byte[] keyByteArray = new byte[XidFactory.GLOBAL_TRANSACTION_LENGTH];
 			System.arraycopy(byteArray, 0, keyByteArray, 0, keyByteArray.length);
-			int operator = byteArray[32];
+			int operator = byteArray[keyByteArray.length];
 
 			VirtualLoggingKey xid = new VirtualLoggingKey();
 			xid.setGlobalTransactionId(keyByteArray);
@@ -331,6 +334,10 @@ public abstract class VirtualLoggingSystemImpl implements VirtualLoggingSystem, 
 		} finally {
 			this.lock.unlock();
 		}
+	}
+
+	public void flushImmediately() {
+		this.master.flushImmediately();
 	}
 
 	public void shutdown() {

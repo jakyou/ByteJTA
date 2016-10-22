@@ -21,6 +21,7 @@ import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
 import org.bytesoft.bytejta.supports.resource.CommonResourceDescriptor;
+import org.bytesoft.bytejta.supports.resource.LocalXAResourceDescriptor;
 import org.bytesoft.bytejta.supports.resource.RemoteResourceDescriptor;
 import org.bytesoft.bytejta.supports.resource.UnidentifiedResourceDescriptor;
 import org.bytesoft.bytejta.supports.wire.RemoteCoordinator;
@@ -36,7 +37,7 @@ import org.bytesoft.transaction.xa.XidFactory;
 public class XAResourceArchiveDeserializer implements ArchiveDeserializer, TransactionBeanFactoryAware {
 
 	private TransactionBeanFactory beanFactory;
-	private XAResourceDeserializer deserializer;
+	// private XAResourceDeserializer deserializer;
 
 	public byte[] serialize(TransactionXid xid, Object obj) {
 		XAResourceArchive archive = (XAResourceArchive) obj;
@@ -52,6 +53,9 @@ public class XAResourceArchiveDeserializer implements ArchiveDeserializer, Trans
 			identifierByteArray = descriptor.getIdentifier().getBytes();
 		} else if (RemoteResourceDescriptor.class.isInstance(descriptor)) {
 			typeByte = (byte) 0x2;
+			identifierByteArray = descriptor.getIdentifier().getBytes();
+		} else if (LocalXAResourceDescriptor.class.isInstance(descriptor)) {
+			typeByte = (byte) 0x3;
 			identifierByteArray = descriptor.getIdentifier().getBytes();
 		}
 
@@ -100,18 +104,24 @@ public class XAResourceArchiveDeserializer implements ArchiveDeserializer, Trans
 		buffer.get(byteArray);
 		String identifier = new String(byteArray);
 
+		XAResourceDeserializer deserializer = this.beanFactory.getResourceDeserializer();
 		if (resourceType == 0x01) {
 			archive.setIdentified(true);
 			CommonResourceDescriptor resourceDescriptor = new CommonResourceDescriptor();
-			XAResource resource = this.deserializer.deserialize(identifier);
+			XAResource resource = deserializer.deserialize(identifier);
 			resourceDescriptor.setDelegate(resource);
 			descriptor = resourceDescriptor;
 		} else if (resourceType == 0x02) {
 			archive.setIdentified(true);
 			RemoteResourceDescriptor resourceDescriptor = new RemoteResourceDescriptor();
-			XAResource resource = this.deserializer.deserialize(identifier);
+			XAResource resource = deserializer.deserialize(identifier);
 			resourceDescriptor.setDelegate((RemoteCoordinator) resource);
 			descriptor = resourceDescriptor;
+		} else if (resourceType == 0x03) {
+			archive.setIdentified(true);
+			XAResource resource = deserializer.deserialize(identifier);
+			LocalXAResourceDescriptor resourceDescriptor = new LocalXAResourceDescriptor();
+			resourceDescriptor.setDelegate(resource);
 			descriptor = resourceDescriptor;
 		} else {
 			UnidentifiedResourceDescriptor resourceDescriptor = new UnidentifiedResourceDescriptor();
@@ -137,14 +147,6 @@ public class XAResourceArchiveDeserializer implements ArchiveDeserializer, Trans
 
 	public void setBeanFactory(TransactionBeanFactory tbf) {
 		this.beanFactory = tbf;
-	}
-
-	public XAResourceDeserializer getDeserializer() {
-		return deserializer;
-	}
-
-	public void setDeserializer(XAResourceDeserializer deserializer) {
-		this.deserializer = deserializer;
 	}
 
 }

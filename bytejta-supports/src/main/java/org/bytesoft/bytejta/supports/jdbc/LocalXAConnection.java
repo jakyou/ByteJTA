@@ -13,7 +13,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this distribution; if not, see <http://www.gnu.org/licenses/>.
  */
-package org.bytesoft.bytejta.supports.druid;
+package org.bytesoft.bytejta.supports.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -23,21 +23,29 @@ import javax.sql.StatementEventListener;
 import javax.sql.XAConnection;
 import javax.transaction.xa.XAResource;
 
-import com.alibaba.druid.pool.DruidPooledConnection;
+import org.bytesoft.bytejta.supports.resource.LocalXAResourceDescriptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class DruidLocalXAConnection implements XAConnection {
-	private final DruidPooledConnection druidPooledConnection;
-	private final DruidLocalXAResource xaResource = new DruidLocalXAResource();
+public class LocalXAConnection implements XAConnection {
+	static final Logger logger = LoggerFactory.getLogger(LocalXAConnection.class);
+
+	private String resourceId;
+
+	private final Connection connection;
+	private final LocalXAResource xaResource = new LocalXAResource();
 	private boolean initialized = false;
 	private boolean logicalConnectionReleased = false;
 	private int pooledConnectionSharingCount = 0;
 
-	public DruidLocalXAConnection(DruidPooledConnection connection) {
-		this.druidPooledConnection = connection;
+	private transient LocalXAResourceDescriptor descriptor;
+
+	public LocalXAConnection(Connection connection) {
+		this.connection = connection;
 	}
 
 	public Connection getConnection() throws SQLException {
-		DruidLogicalConnection logicalConnection = new DruidLogicalConnection(this, this.druidPooledConnection);
+		LogicalConnection logicalConnection = new LogicalConnection(this, this.connection);
 		if (this.initialized) {
 			this.pooledConnectionSharingCount++;
 		} else {
@@ -64,7 +72,7 @@ public class DruidLocalXAConnection implements XAConnection {
 
 	public void commitLocalTransaction() throws SQLException {
 		try {
-			this.druidPooledConnection.commit();
+			this.connection.commit();
 		} catch (SQLException ex) {
 			throw ex;
 		} catch (RuntimeException ex) {
@@ -73,14 +81,14 @@ public class DruidLocalXAConnection implements XAConnection {
 			try {
 				this.close();
 			} catch (SQLException ex) {
-				// ignore
+				logger.debug(ex.getMessage());
 			}
 		}
 	}
 
 	public void rollbackLocalTransaction() throws SQLException {
 		try {
-			this.druidPooledConnection.rollback();
+			this.connection.rollback();
 		} catch (SQLException ex) {
 			throw ex;
 		} catch (RuntimeException ex) {
@@ -89,37 +97,51 @@ public class DruidLocalXAConnection implements XAConnection {
 			try {
 				this.close();
 			} catch (SQLException ex) {
-				// ignore
+				logger.debug(ex.getMessage());
 			}
 		}
 	}
 
 	public void close() throws SQLException {
 		try {
-			this.druidPooledConnection.close();
+			this.connection.close();
 		} finally {
 			this.initialized = false;
 		}
 	}
 
 	public void addConnectionEventListener(ConnectionEventListener paramConnectionEventListener) {
-		this.druidPooledConnection.addConnectionEventListener(paramConnectionEventListener);
+		// TODO this.pooledConnection.addConnectionEventListener(paramConnectionEventListener);
 	}
 
 	public void removeConnectionEventListener(ConnectionEventListener paramConnectionEventListener) {
-		this.druidPooledConnection.removeConnectionEventListener(paramConnectionEventListener);
+		// TODO this.pooledConnection.removeConnectionEventListener(paramConnectionEventListener);
 	}
 
 	public void addStatementEventListener(StatementEventListener paramStatementEventListener) {
-		this.druidPooledConnection.addStatementEventListener(paramStatementEventListener);
+		// TODO this.pooledConnection.addStatementEventListener(paramStatementEventListener);
 	}
 
 	public void removeStatementEventListener(StatementEventListener paramStatementEventListener) {
-		this.druidPooledConnection.removeStatementEventListener(paramStatementEventListener);
+		// TODO this.pooledConnection.removeStatementEventListener(paramStatementEventListener);
 	}
 
 	public XAResource getXAResource() throws SQLException {
-		return this.xaResource;
+		if (this.descriptor == null) {
+			LocalXAResourceDescriptor xares = new LocalXAResourceDescriptor();
+			xares.setIdentifier(this.resourceId);
+			xares.setDelegate(this.xaResource);
+			this.descriptor = xares;
+		}
+		return this.descriptor;
+	}
+
+	public String getResourceId() {
+		return resourceId;
+	}
+
+	public void setResourceId(String resourceId) {
+		this.resourceId = resourceId;
 	}
 
 }

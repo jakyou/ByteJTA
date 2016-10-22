@@ -26,6 +26,10 @@ public class CommonResourceDescriptor implements XAResourceDescriptor {
 	private XAResource delegate;
 	private String identifier;
 
+	public boolean isTransactionCommitted(Xid xid) throws IllegalStateException {
+		throw new IllegalStateException();
+	}
+
 	public String toString() {
 		return String.format("common-resource[id= %s]", this.identifier);
 		// return String.format("common-resource[id= %s, delegate= %s]", this.identifier, this.delegate);
@@ -41,6 +45,10 @@ public class CommonResourceDescriptor implements XAResourceDescriptor {
 
 	public void commit(Xid arg0, boolean arg1) throws XAException {
 		delegate.commit(arg0, arg1);
+	}
+
+	public void recoveryCommit(Xid arg0) throws XAException {
+		delegate.commit(arg0, false);
 	}
 
 	public void end(Xid arg0, int arg1) throws XAException {
@@ -68,6 +76,10 @@ public class CommonResourceDescriptor implements XAResourceDescriptor {
 	}
 
 	public void rollback(Xid arg0) throws XAException {
+		delegate.rollback(arg0);
+	}
+
+	public void recoveryRollback(Xid arg0) throws XAException {
 		delegate.rollback(arg0);
 	}
 

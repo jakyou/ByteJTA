@@ -13,17 +13,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this distribution; if not, see <http://www.gnu.org/licenses/>.
  */
-package org.bytesoft.transaction.supports.rpc;
+package org.bytesoft.transaction.supports;
 
-import org.bytesoft.bytejta.supports.wire.RemoteCoordinator;
-import org.bytesoft.transaction.TransactionContext;
+import javax.transaction.xa.XAResource;
 
-public interface TransactionRequest {
+public interface TransactionResourceListener {
 
-	public RemoteCoordinator getTargetTransactionCoordinator();
+	public void onEnlistResource(XAResource xares);
 
-	public TransactionContext getTransactionContext();
-
-	public void setTransactionContext(TransactionContext transactionContext);
+	public void onDelistResource(XAResource xares);
 
 }

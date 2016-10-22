@@ -13,7 +13,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this distribution; if not, see <http://www.gnu.org/licenses/>.
  */
-package org.bytesoft.bytejta.supports.druid;
+package org.bytesoft.bytejta.supports.jdbc;
 
 import java.sql.Array;
 import java.sql.Blob;
@@ -34,14 +34,17 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
-import com.alibaba.druid.pool.DruidPooledConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class DruidLogicalConnection implements Connection {
+public class LogicalConnection implements Connection {
+	static final Logger logger = LoggerFactory.getLogger(LogicalConnection.class);
+
 	private boolean connectionClosed;
-	private final DruidLocalXAConnection managedConnection;
-	private final DruidPooledConnection delegateConnection;
+	private final LocalXAConnection managedConnection;
+	private final Connection delegateConnection;
 
-	public DruidLogicalConnection(DruidLocalXAConnection managedConnection, DruidPooledConnection connection) {
+	public LogicalConnection(LocalXAConnection managedConnection, Connection connection) {
 		this.managedConnection = managedConnection;
 		this.delegateConnection = connection;
 	}
@@ -88,7 +91,7 @@ public class DruidLogicalConnection implements Connection {
 
 	public synchronized void close() throws SQLException {
 		if (this.connectionClosed) {
-			// ignore
+			logger.debug("Current connection has already been closed.");
 		} else {
 			this.connectionClosed = true;
 			managedConnection.closeLogicalConnection();
@@ -139,8 +142,7 @@ public class DruidLogicalConnection implements Connection {
 		return delegateConnection.createStatement(resultSetType, resultSetConcurrency);
 	}
 
-	public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency)
-			throws SQLException {
+	public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
 		return delegateConnection.prepareStatement(sql, resultSetType, resultSetConcurrency);
 	}
 
@@ -185,13 +187,13 @@ public class DruidLogicalConnection implements Connection {
 		return delegateConnection.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability);
 	}
 
-	public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency,
-			int resultSetHoldability) throws SQLException {
+	public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability)
+			throws SQLException {
 		return delegateConnection.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
 	}
 
-	public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency,
-			int resultSetHoldability) throws SQLException {
+	public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability)
+			throws SQLException {
 		return delegateConnection.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
 	}
 

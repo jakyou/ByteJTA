@@ -28,6 +28,8 @@ import javax.sql.XAConnection;
 import javax.sql.XADataSource;
 import javax.transaction.xa.XAResource;
 
+import org.bytesoft.bytejta.supports.jdbc.LocalXADataSource;
+import org.bytesoft.bytejta.supports.jdbc.RecoveredResource;
 import org.bytesoft.bytejta.supports.wire.RemoteCoordinatorRegistry;
 import org.bytesoft.transaction.supports.serialize.XAResourceDeserializer;
 import org.slf4j.Logger;
@@ -49,7 +51,7 @@ public class XAResourceDeserializerImpl implements XAResourceDeserializer, Appli
 			Object bean = this.applicationContext.getBean(identifier);
 			XAResource cachedResource = this.cachedResourceMap.get(identifier);
 			if (cachedResource == null) {
-				cachedResource = this.deserializeResource(bean);
+				cachedResource = this.deserializeResource(identifier, bean);
 				if (cachedResource != null) {
 					this.cachedResourceMap.put(identifier, cachedResource);
 				}
@@ -71,7 +73,7 @@ public class XAResourceDeserializerImpl implements XAResourceDeserializer, Appli
 
 	}
 
-	private XAResource deserializeResource(Object bean) throws Exception {
+	private XAResource deserializeResource(String identifier, Object bean) throws Exception {
 		if (XADataSource.class.isInstance(bean)) {
 			XADataSource xaDataSource = (XADataSource) bean;
 			XAConnection xaConnection = null;
@@ -79,7 +81,7 @@ public class XAResourceDeserializerImpl implements XAResourceDeserializer, Appli
 				xaConnection = xaDataSource.getXAConnection();
 				return xaConnection.getXAResource();
 			} finally {
-				// this.closeIfNecessary(xaConnection);
+				this.closeQuietly(xaConnection);
 			}
 		} else if (XAConnectionFactory.class.isInstance(bean)) {
 			XAConnectionFactory connectionFactory = (XAConnectionFactory) bean;
@@ -90,8 +92,8 @@ public class XAResourceDeserializerImpl implements XAResourceDeserializer, Appli
 				xaSession = xaConnection.createXASession();
 				return xaSession.getXAResource();
 			} finally {
-				// this.closeIfNecessary(xaSession);
-				// this.closeIfNecessary(xaConnection);
+				this.closeQuietly(xaSession);
+				this.closeQuietly(xaConnection);
 			}
 		} else if (ManagedConnectionFactory.class.isInstance(bean)) {
 			ManagedConnectionFactory connectionFactory = (ManagedConnectionFactory) bean;
@@ -100,40 +102,55 @@ public class XAResourceDeserializerImpl implements XAResourceDeserializer, Appli
 				managedConnection = connectionFactory.createManagedConnection(null, null);
 				return managedConnection.getXAResource();
 			} finally {
-				// this.closeIfNecessary(managedConnection);
+				this.closeQuietly(managedConnection);
 			}
+		} else if (LocalXADataSource.class.isInstance(bean)) {
+			LocalXADataSource xaDataSource = (LocalXADataSource) bean;
+			RecoveredResource xares = new RecoveredResource();
+			xares.setDataSource(xaDataSource.getDataSource());
+			return xares;
 		} else {
 			return null;
 		}
 
 	}
 
-	protected void closeIfNecessary(XAConnection closeable) {
+	protected void closeQuietly(XAConnection closeable) {
 		if (closeable != null) {
 			try {
 				closeable.close();
 			} catch (Exception ex) {
-				return;
+				logger.debug(ex.getMessage());
 			}
 		}
 	}
 
-	protected void closeIfNecessary(AutoCloseable closeable) {
+	protected void closeQuietly(javax.jms.XAConnection closeable) {
 		if (closeable != null) {
 			try {
 				closeable.close();
 			} catch (Exception ex) {
-				return;
+				logger.debug(ex.getMessage());
 			}
 		}
 	}
 
-	protected void closeIfNecessary(ManagedConnection closeable) {
+	protected void closeQuietly(javax.jms.XASession closeable) {
+		if (closeable != null) {
+			try {
+				closeable.close();
+			} catch (Exception ex) {
+				logger.debug(ex.getMessage());
+			}
+		}
+	}
+
+	protected void closeQuietly(ManagedConnection closeable) {
 		if (closeable != null) {
 			try {
 				closeable.destroy();
 			} catch (Exception ex) {
-				return;
+				logger.debug(ex.getMessage());
 			}
 		}
 	}

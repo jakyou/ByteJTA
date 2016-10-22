@@ -26,6 +26,10 @@ public class UnidentifiedResourceDescriptor implements XAResourceDescriptor {
 	private String identifier;
 	private XAResource delegate;
 
+	public boolean isTransactionCommitted(Xid xid) throws IllegalStateException {
+		throw new IllegalStateException();
+	}
+
 	public String toString() {
 		return String.format("unknown-resource[%s]", this.delegate);
 	}
@@ -43,6 +47,13 @@ public class UnidentifiedResourceDescriptor implements XAResourceDescriptor {
 			return;
 		}
 		delegate.commit(arg0, arg1);
+	}
+
+	public void recoveryCommit(Xid arg0) throws XAException {
+		if (this.delegate == null) {
+			return;
+		}
+		delegate.commit(arg0, false);
 	}
 
 	public void end(Xid arg0, int arg1) throws XAException {
@@ -88,6 +99,13 @@ public class UnidentifiedResourceDescriptor implements XAResourceDescriptor {
 	}
 
 	public void rollback(Xid arg0) throws XAException {
+		if (this.delegate == null) {
+			return;
+		}
+		delegate.rollback(arg0);
+	}
+
+	public void recoveryRollback(Xid arg0) throws XAException {
 		if (this.delegate == null) {
 			return;
 		}

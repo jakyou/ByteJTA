@@ -20,8 +20,11 @@ import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
 import org.bytesoft.transaction.supports.resource.XAResourceDescriptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class XAResourceArchive implements XAResource {
+	static final Logger logger = LoggerFactory.getLogger(XAResourceArchive.class);
 	public static final int DEFAULT_VOTE = -1;
 
 	private boolean delisted;
@@ -50,6 +53,18 @@ public class XAResourceArchive implements XAResource {
 		}
 	}
 
+	public void recoveryCommit(Xid xid) throws XAException {
+		if (this.readonly) {
+			// ignore
+		} else if (this.committed) {
+			// ignore
+		} else if (this.rolledback) {
+			throw new XAException(XAException.XA_HEURRB);
+		} else {
+			descriptor.recoveryCommit(xid);
+		}
+	}
+
 	public void end(Xid ignore, int flags) throws XAException {
 		descriptor.end(xid, flags);
 	}
@@ -62,7 +77,7 @@ public class XAResourceArchive implements XAResource {
 		try {
 			descriptor.forget(xid);
 		} catch (XAException ex) {
-			// ignore
+			logger.warn("Error occurred while forgeting xa-resource.", xid);
 		}
 	}
 
@@ -104,6 +119,18 @@ public class XAResourceArchive implements XAResource {
 			descriptor.rollback(xid);
 		}
 
+	}
+
+	public void recoveryRollback(Xid xid) throws XAException {
+		if (this.readonly) {
+			// ignore
+		} else if (this.committed) {
+			throw new XAException(XAException.XA_HEURCOM);
+		} else if (this.rolledback) {
+			// ignore
+		} else {
+			descriptor.recoveryRollback(xid);
+		}
 	}
 
 	public boolean setTransactionTimeout(int seconds) throws XAException {
